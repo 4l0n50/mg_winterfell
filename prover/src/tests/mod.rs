@@ -5,7 +5,7 @@
 
 use crate::TraceTable;
 use air::{
-    Air, AirContext, Assertion, EvaluationFrame, FieldExtension, HashFunction, ProofOptions,
+    Air, AirContext, Assertion, EvaluationFrame, DefaultEvaluationFrame, FieldExtension, HashFunction, ProofOptions,
     TraceInfo, TransitionConstraintDegree,
 };
 use math::{fields::f128::BaseElement, FieldElement, StarkField};
@@ -98,6 +98,9 @@ impl Air for MockAir {
     type BaseField = BaseElement;
     type PublicInputs = ();
 
+    type MainFrame<E: FieldElement> = DefaultEvaluationFrame<E>;
+    type AuxFrame<E: FieldElement> = DefaultEvaluationFrame<E>;
+
     fn new(trace_info: TraceInfo, _pub_inputs: (), _options: ProofOptions) -> Self {
         let context = build_context(trace_info, 8, 1);
         MockAir {
@@ -113,7 +116,7 @@ impl Air for MockAir {
 
     fn evaluate_transition<E: FieldElement + From<Self::BaseField>>(
         &self,
-        _frame: &EvaluationFrame<E>,
+        _frame: &Self::MainFrame<E>,
         _periodic_values: &[E],
         _result: &mut [E],
     ) {

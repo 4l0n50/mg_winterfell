@@ -11,9 +11,7 @@ use utils::TableReader;
 /// It is passed in as one of the parameters into
 /// [Air::evaluate_transition()](crate::Air::evaluate_transition) function.
 pub trait EvaluationFrame<E: FieldElement> {
-    const FRAME_OFFSETS: [usize; 2] = [0, 1];
-    const FRAME_SHIFT: usize = 1;
-
+    
     /// Creates an empty frame
     fn new<A: Air>(air: &A) -> Self;
 
@@ -26,6 +24,8 @@ pub trait EvaluationFrame<E: FieldElement> {
     /// Reads selected trace rows from the supplied data into the frame
     fn read_from<R: TableReader<E>>(&mut self, data: R, step: usize, blowup: usize);
 
+    fn is_active_cell(offset: usize, column_index: usize) -> bool;
+
     /// Returns the specified frame row
     fn row<'a>(&'a self, index: usize) -> &'a [E];
 
@@ -35,42 +35,155 @@ pub trait EvaluationFrame<E: FieldElement> {
     }
 
     /// Returns the offsets that make up a frame
-    fn offsets() -> &'static [usize] {
-        &Self::FRAME_OFFSETS
-    }
+    fn offsets() -> &'static [usize];
 
     /// Returns the amount of trace rows that the evaluation frame should shift across
     /// consecutive constraint evaluation steps
-    fn shift() -> usize {
-        Self::FRAME_SHIFT
-    }
+    fn shift() -> usize ;
 }
 
 /// Contains rows of the execution trace
 #[derive(Debug, Clone)]
 pub struct DefaultEvaluationFrame<E: FieldElement> {
-    table: Table<E>, // row-major indexing
+    current: Vec<E>,
+    next: Vec<E>,
 }
 
 // DEFAULT EVALUATION FRAME
 // ================================================================================================
 
-impl<E: FieldElement> DefaultEvaluationFrame<E> {}
+impl<E: FieldElement> DefaultEvaluationFrame<E> {
+    const FRAME_OFFSETS: [usize; 2] = [0, 1];
+    const FRAME_SHIFT: usize = 1;
+
+    /// Returns a reference to the current row.
+    #[inline(always)]
+    pub fn current(&self) -> &[E] {
+        &self.current
+    }
+
+    /// Returns a mutable reference to the current row.
+    #[inline(always)]
+    pub fn current_mut(&mut self) -> &mut [E] {
+        &mut self.current
+    }
+
+    /// Returns a reference to the next row.
+    #[inline(always)]
+    pub fn next(&self) -> &[E] {
+        &self.next
+    }
+
+    /// Returns a mutable reference to the next row.
+    #[inline(always)]
+    pub fn next_mut(&mut self) -> &mut [E] {
+        &mut self.next
+    }
+}
 
 impl<E: FieldElement> EvaluationFrame<E> for DefaultEvaluationFrame<E> {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
+    /// Returns a new evaluation frame instantiated with the specified number of registers.
+    ///
+    /// # Panics
+    /// Panics if `num_registers` is zero.
+    fn new<A: Air>(air: &A) -> Self {
+        let num_cols = air.trace_layout().main_trace_width();
+        DefaultEvaluationFrame {
+            current: E::zeroed_vector(num_cols),
+            next: E::zeroed_vector(num_cols),
+        }
+    }
+
+    fn from_table(table: Table<E>) -> Self {
+        //TODO add assertions?
+        Self {
+            current: table.get_row(0).to_vec(),
+            next: table.get_row(1).to_vec()
+        }
+    }
+
+    // ROW MUTATORS
+    // --------------------------------------------------------------------------------------------
+
+    fn read_from<R: TableReader<E>>(&mut self, data: R, step: usize, blowup: usize) {
+        let trace_len = data.num_rows();
+        for col_idx in 0..data.num_cols() {
+            self.current[col_idx] = data.get(col_idx, step);
+            self.next[col_idx] = data.get(col_idx, (step + blowup) % trace_len);
+        }
+    }
+
+    fn is_active_cell(offset: usize, column_index: usize) -> bool {
+        offset < 2
+    }
+
+    // ROW ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
+    fn row<'a>(&'a self, row_idx: usize) -> &'a [E] {
+        match row_idx {
+            0 => &self.current,
+            1 => &self.next,
+            _ => panic!("Row index must be 0 or 1")
+        }
+    }
+
+    fn to_table(&self) -> Table<E> {
+        Table::from_rows(vec![self.current.clone(), self.next.clone()])
+    }
+
+    fn offsets() -> &'static [usize] {
+        &Self::FRAME_OFFSETS
+    }
+
+    fn shift() -> usize {
+        Self::FRAME_SHIFT
+    }
+}
+
+
+// CUSTOM EVALUATION FRAME
+// ================================================================================================
+
+
+/// Contains rows of the execution trace
+#[derive(Debug, Clone)]
+pub struct CustomEvaluationFrame<E: FieldElement> {
+    table: Table<E>, // row-major indexing
+}
+
+
+impl<E: FieldElement> CustomEvaluationFrame<E> {
+    const FRAME_OFFSETS: [usize; 2] = [0, 1];
+    const FRAME_SHIFT: usize = 1;
+}
+
+impl<E: FieldElement> EvaluationFrame<E> for CustomEvaluationFrame<E> {
+    // CONSTRUCTORS
+    // --------------------------------------------------------------------------------------------
+
+    
     fn new<A: Air>(air: &A) -> Self {
         let num_cols = air.trace_layout().main_trace_width();
         let num_rows = Self::num_rows();
-        DefaultEvaluationFrame {
+        CustomEvaluationFrame {
             table: Table::new(num_rows, num_cols),
         }
     }
 
     fn from_table(table: Table<E>) -> Self {
         Self { table }
+    }
+
+    fn is_active_cell(offset: usize, _column_index: usize) -> bool {
+        // TODO: Sequential search? And what about the other loop for the columns?
+        for index in Self::FRAME_OFFSETS.iter() {
+            if *index == offset {return true}
+        }
+        false
     }
 
     // ROW MUTATORS
@@ -94,5 +207,13 @@ impl<E: FieldElement> EvaluationFrame<E> for DefaultEvaluationFrame<E> {
 
     fn to_table(&self) -> Table<E> {
         self.table.clone()
+    }
+
+    fn offsets() -> &'static [usize] {
+        &Self::FRAME_OFFSETS
+    }
+
+    fn shift() -> usize {
+        Self::FRAME_SHIFT
     }
 }

@@ -9,7 +9,7 @@ use super::{
 };
 use air::{
     Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
-    TransitionConstraints,
+    DefaultEvaluationFrame, TransitionConstraints,
 };
 use math::FieldElement;
 use utils::iter_mut;
@@ -144,7 +144,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         fragment: &mut EvaluationTableFragment<E>,
     ) {
         // initialize buffers to hold trace values and evaluation results at each step;
-        let mut main_frame = A::Frame::new(self.air);
+        let mut main_frame = A::MainFrame::new(self.air);
         let mut evaluations = vec![E::ZERO; fragment.num_columns()];
         let mut t_evaluations = vec![E::BaseField::ZERO; self.num_main_transition_constraints()];
 
@@ -156,7 +156,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         // LDE domain
         let lde_shift = domain.ce_to_lde_blowup().trailing_zeros();
 
-        let frame_shift = A::Frame::<E>::shift();
+        let frame_shift = A::MainFrame::<A::BaseField>::shift();
         for i in 0..fragment.num_rows() / frame_shift {
             let step = i + frame_shift + fragment.offset();
 
@@ -200,8 +200,8 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         fragment: &mut EvaluationTableFragment<E>,
     ) {
         // initialize buffers to hold trace values and evaluation results at each step
-        let mut main_frame = A::Frame::new(self.air);
-        let mut aux_frame = A::AuxFrame::<E>::new(self.air);
+        let mut main_frame = A::MainFrame::new(self.air);
+        let mut aux_frame = A::AuxFrame::new(self.air);
         let mut tm_evaluations = vec![E::BaseField::ZERO; self.num_main_transition_constraints()];
         let mut ta_evaluations = vec![E::ZERO; self.num_aux_transition_constraints()];
         let mut evaluations = vec![E::ZERO; fragment.num_columns()];
@@ -214,7 +214,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         // LDE domain
         let lde_shift = domain.ce_to_lde_blowup().trailing_zeros();
 
-        let frame_shift = A::Frame::<E>::shift();
+        let frame_shift = A::MainFrame::<A::BaseField>::shift();
         for i in 0..fragment.num_rows() / frame_shift {
             let step = i + frame_shift + fragment.offset();
 
@@ -265,7 +265,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     #[rustfmt::skip]
     fn evaluate_main_transition(
         &self,
-        main_frame: &A::Frame<E::BaseField>,
+        main_frame: &A::MainFrame<A::BaseField>,
         x: E::BaseField,
         step: usize,
         evaluations: &mut [E::BaseField],
@@ -295,7 +295,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     #[rustfmt::skip]
     fn evaluate_aux_transition(
         &self,
-        main_frame: &A::Frame<E::BaseField>,
+        main_frame: &A::MainFrame<A::BaseField>,
         aux_frame: &A::AuxFrame<E>,
         x: E::BaseField,
         step: usize,

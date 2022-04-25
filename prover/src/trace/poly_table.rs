@@ -7,6 +7,9 @@ use crate::{
     matrix::{ColumnIter, MultiColumnIter},
     Matrix,
 };
+
+use air::Air;
+
 use math::{log2, FieldElement, StarkField};
 use utils::collections::Vec;
 
@@ -64,12 +67,28 @@ impl<E: FieldElement> TracePolyTable<E> {
         result
     }
 
+    /// Evaluates some trace polynomials (across all trace segments) at the specified point `x`.
+    pub fn evaluate_some_at<P, T>(&self, predicate: P, x: E) -> Vec<E>
+    where P: FnMut() -> bool
+    {
+        let mut result = self.main_segment_polys.evaluate_some_columns_at(x, predicate);
+        for aux_polys in self.aux_segment_polys.iter() {
+            result.append(&mut aux_polys.evaluate_columns_at(x));
+        }
+        result
+    }
+
     /// Returns an out-of-domain evaluation frame constructed by evaluating trace polynomials
     /// for all columns at points z and z * g, where g is the generator of the trace domain.
-    pub fn get_ood_frame(&self, z: E, frame_size: usize) -> Vec<Vec<E>> {
+    /// TODO: rewrite comments
+    pub fn get_ood_frame<A: Air>(&self, z: E, air: &A) -> Vec<Vec<E>> {
         let g = E::from(E::BaseField::get_root_of_unity(log2(self.poly_size())));
-        (0..frame_size)
-            .map(|i| self.evaluate_at(z * g.exp((i as u64).into())))
+        // TODO: Modify evaluate_at in order to evaluate only some of the rows
+        air.frame_offsets().iter()
+            .map(|offset| self.evaluate_some_at(
+                |column_index| air.is_active_cell(offset, column_index),
+                z * g.exp((*i as u64).into())
+            ))
             .collect()
     }
 

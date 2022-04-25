@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use air::{Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame};
+use air::{Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame, DefaultEvaluationFrame};
 use math::{polynom, FieldElement};
 use utils::collections::Vec;
 
@@ -14,7 +14,7 @@ use utils::collections::Vec;
 pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     air: &A,
     composition_coefficients: ConstraintCompositionCoefficients<E>,
-    main_trace_frame: &A::Frame<E>,
+    main_trace_frame: &A::MainFrame<E>,
     aux_trace_frame: &Option<A::AuxFrame<E>>,
     aux_rand_elements: AuxTraceRandElements<E>,
     x: E,

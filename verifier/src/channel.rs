@@ -365,7 +365,12 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> ConstraintQuer
 // TRACE OUT-OF-DOMAIN FRAME
 // ================================================================================================
 
-struct TraceOodFrame<E: FieldElement, F1: EvaluationFrame<E>, F2: EvaluationFrame<E>> {
+struct TraceOodFrame<E, F1, F2>
+where
+    E: FieldElement,
+    F1: EvaluationFrame<E>, 
+    F2: EvaluationFrame<E> 
+{
     marker: PhantomData<E>, // What is the correct way to avoid unusued parameter E error?
     main_frame: F1,
     aux_frame: Option<F2>,

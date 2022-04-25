@@ -29,6 +29,7 @@
 
 #![feature(generic_associated_types)]
 #![cfg_attr(not(feature = "std"), no_std)]
+#![feature(associated_type_defaults)]
 
 #[cfg(not(feature = "std"))]
 #[macro_use]
@@ -49,6 +50,6 @@ mod air;
 pub use air::{
     Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint, BoundaryConstraintGroup,
     BoundaryConstraints, ConstraintCompositionCoefficients, ConstraintDivisor,
-    DeepCompositionCoefficients, EvaluationFrame, TraceInfo, TraceLayout,
+    DeepCompositionCoefficients, EvaluationFrame, DefaultEvaluationFrame, TraceInfo, TraceLayout,
     TransitionConstraintDegree, TransitionConstraintGroup, TransitionConstraints,
 };

@@ -25,7 +25,7 @@ pub use boundary::{BoundaryConstraint, BoundaryConstraintGroup, BoundaryConstrai
 
 mod transition;
 pub use transition::{
-    EvaluationFrame, TransitionConstraintDegree, TransitionConstraintGroup, TransitionConstraints,
+    EvaluationFrame, DefaultEvaluationFrame, CustomEvaluationFrame, TransitionConstraintDegree, TransitionConstraintGroup, TransitionConstraints,
 };
 
 mod coefficients;
@@ -156,7 +156,8 @@ pub trait Air: Send + Sync {
     /// This could be any type as long as it can be serialized into a sequence of bytes.
     type PublicInputs: Serializable;
 
-    type Frame<E: FieldElement>: EvaluationFrame<E>;
+
+    type MainFrame<E: FieldElement>: EvaluationFrame<E>;
     type AuxFrame<E: FieldElement>: EvaluationFrame<E>;
 
     // REQUIRED METHODS
@@ -187,7 +188,7 @@ pub trait Air: Send + Sync {
     /// (when extension fields are used).
     fn evaluate_transition<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        frame: &Self::Frame<E>,
+        frame: &Self::MainFrame<E>,
         periodic_values: &[E],
         result: &mut [E],
     );
@@ -225,7 +226,7 @@ pub trait Air: Send + Sync {
     #[allow(unused_variables)]
     fn evaluate_aux_transition<F, E>(
         &self,
-        main_frame: &Self::Frame<F>,
+        main_frame: &Self::MainFrame<F>,
         aux_frame: &Self::AuxFrame<E>,
         periodic_values: &[F],
         aux_rand_elements: &AuxTraceRandElements<E>,
@@ -444,9 +445,44 @@ pub trait Air: Send + Sync {
         self.context().options.domain_offset()
     }
 
+    /// Returns wether the cell at column `column_index` and relative row offset  (TODO: Rephrase this)  
+    fn is_active_cell(offset: usize, column_index: usize) -> bool   
+    {
+        // TODO: It doesn't seem necesary to use the type param here
+        Self::MainFrame::<Self::BaseField>::is_active_cell(offset, column_index) 
+        || Self::AuxFrame::<Self::BaseField>::is_active_cell(offset, column_index)
+    }
+
     fn eval_frame_size(&self) -> usize {
-        // TODO
-        2
+        // TODO: Currently is assuming that the aux
+        // frame is contained in the main frame
+        self.main_frame_size()
+    }
+    
+    fn main_frame_size(&self) -> usize {
+        self.main_frame_offsets().len()
+    }
+
+    fn aux_frame_size(&self) -> usize {
+        self.aux_frame_offsets().len()
+    }
+
+    fn frame_offsets(&self) -> &'static [usize] {
+        // TODO: Currently is assuming that the aux
+        // frame is contained in the main frame
+        self.main_frame_offsets()
+    }
+
+    fn main_frame_offsets(&self) -> &'static [usize] {
+        // TODO offsets does not really depend on MainFrame's
+        // type parameter
+        Self::MainFrame::<Self::BaseField>::offsets()
+    }
+
+    fn aux_frame_offsets(&self) -> &'static [usize] {
+        // TODO offsets does not really depend on AuxFrame's
+        // type parameter
+        Self::AuxFrame::<Self::BaseField>::offsets()
     }
 
     // TRACE SEGMENT RANDOMNESS
@@ -516,12 +552,23 @@ pub trait Air: Send + Sync {
         H: Hasher,
     {
         let mut t_coefficients = Vec::new();
-        for _ in 0..self.trace_info().width() {
+        for _ in 0..self.trace_layout().main_trace_width() {
             let mut values = Vec::new();
-            for _ in 0..self.eval_frame_size() + 1 {
+            // TODO: It might skip some rows
+            for _ in 0..self.main_frame_size() + 1 {
                 values.push(public_coin.draw()?);
             }
             t_coefficients.push(values);
+        }
+        for _ in 0..self.trace_layout().num_aux_segments(){
+            for _ in 0..self.trace_layout().aux_trace_width() {
+                let mut values = Vec::new();
+                // TODO: It might skip some rows
+                for _ in 0..self.aux_frame_size() + 1 {
+                    values.push(public_coin.draw()?);
+                }
+                t_coefficients.push(values);
+            }
         }
 
         // self.ce_blowup_factor() is the same as number of composition columns
@@ -536,4 +583,9 @@ pub trait Air: Send + Sync {
             degree: public_coin.draw_pair()?,
         })
     }
+}
+
+pub trait DefaultAir: Air {
+    type MainFrame<E: FieldElement> = DefaultEvaluationFrame<E>;
+    type AuxFrame<E: FieldElement> = DefaultEvaluationFrame<E>;
 }

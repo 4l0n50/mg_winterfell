@@ -528,7 +528,7 @@
 pub use prover::{
     crypto, iterators, math, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
     BoundaryConstraintGroup, ByteReader, ByteWriter, ConstraintCompositionCoefficients,
-    ConstraintDivisor, DeepCompositionCoefficients, Deserializable, DeserializationError,
+    ConstraintDivisor, DeepCompositionCoefficients, Deserializable, DeserializationError, DefaultEvaluationFrame,
     EvaluationFrame, FieldExtension, HashFunction, Matrix, ProofOptions, Prover, ProverError,
     Serializable, StarkProof, Trace, TraceInfo, TraceLayout, TraceTable, TraceTableFragment,
     TransitionConstraintDegree, TransitionConstraintGroup,

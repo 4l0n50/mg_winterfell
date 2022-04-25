@@ -6,7 +6,7 @@
 use super::{BaseElement, FieldElement, TRACE_WIDTH};
 use crate::utils::are_equal;
 use winterfell::{
-    Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
+    Air, AirContext, Assertion, DefaultEvaluationFrame, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
 
@@ -21,6 +21,9 @@ pub struct Fib8Air {
 impl Air for Fib8Air {
     type BaseField = BaseElement;
     type PublicInputs = BaseElement;
+
+    type MainFrame<E: FieldElement> = DefaultEvaluationFrame<E>;
+    type AuxFrame<E:FieldElement> = DefaultEvaluationFrame<E>;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -42,7 +45,7 @@ impl Air for Fib8Air {
 
     fn evaluate_transition<E: FieldElement + From<Self::BaseField>>(
         &self,
-        frame: &EvaluationFrame<E>,
+        frame: &DefaultEvaluationFrame<E>,
         _periodic_values: &[E],
         result: &mut [E],
     ) {

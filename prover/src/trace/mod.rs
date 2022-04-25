@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::Matrix;
-use air::{Air, AuxTraceRandElements, EvaluationFrame, TraceInfo, TraceLayout};
+use air::{Air, AuxTraceRandElements, EvaluationFrame, DefaultEvaluationFrame, TraceInfo, TraceLayout};
 use math::{polynom, FieldElement, StarkField};
 
 mod trace_lde;
@@ -160,7 +160,7 @@ pub trait Trace: Sized {
 
         // initialize buffers to hold evaluation frames and results of constraint evaluations
         let mut x = Self::BaseField::ONE;
-        let mut main_frame = A::Frame::new(air);
+        let mut main_frame = A::MainFrame::new(air);
         let mut aux_frame = if air.trace_info().is_multi_segment() {
             Some(A::AuxFrame::new(air))
         } else {

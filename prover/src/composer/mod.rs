@@ -75,6 +75,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
     ) {
         assert!(self.coefficients.is_empty());
 
+        //TODO: Consider non consecutive fragments of the states
         let frame_size = ood_trace_states.len();
 
         // compute out-of-domain point offset from z using the trace generator
