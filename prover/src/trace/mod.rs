@@ -180,7 +180,7 @@ pub trait Trace: Sized {
 
             // evaluate transition constraints for the main trace segment and make sure they all
             // evaluate to zeros
-            main_frame.read_from(self.main_segment(), step, 0);
+            main_frame.read_from(self.main_segment(), step, 1);
             air.evaluate_transition(&main_frame, &periodic_values, &mut main_evaluations);
             for (i, &evaluation) in main_evaluations.iter().enumerate() {
                 assert!(

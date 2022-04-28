@@ -156,9 +156,9 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         // LDE domain
         let lde_shift = domain.ce_to_lde_blowup().trailing_zeros();
 
-        let frame_shift = A::MainFrame::<A::BaseField>::shift();
-        for i in 0..fragment.num_rows() / frame_shift {
-            let step = i + frame_shift + fragment.offset();
+        //let frame_shift = A::MainFrame::<A::BaseField>::shift();
+        for i in 0..fragment.num_rows() {
+            let step = i + fragment.offset();
 
             // update evaluation frame buffer with data from the execution trace; this will
             // read current and next rows from the trace into the buffer; data in the trace

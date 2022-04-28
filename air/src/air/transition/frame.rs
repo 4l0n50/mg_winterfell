@@ -24,10 +24,19 @@ pub trait EvaluationFrame<E: FieldElement> {
     /// Reads selected trace rows from the supplied data into the frame
     fn read_from<R: TableReader<E>>(&mut self, data: R, step: usize, blowup: usize);
 
+    /// Returns None() (infinity) when all the cells in a row are active and Some(x) when
+    /// the length of the row is x.
+    fn row_len(offset: usize) -> Option<usize>;
+
+    // TODO: It should be checked that is_active_row(offset, column_index) => row_len(offset) > 0 
     fn is_active_cell(offset: usize, column_index: usize) -> bool;
 
     /// Returns the specified frame row
+    /// TODO: Maybe this method is not needed
     fn row<'a>(&'a self, index: usize) -> &'a [E];
+
+    /// Returns the row evaluated at g^0*z in the OOD frame
+    fn main_row<'a>(&'a self) -> &'a [E];
 
     /// Returns the number of frame rows
     fn num_rows() -> usize {
@@ -116,7 +125,16 @@ impl<E: FieldElement> EvaluationFrame<E> for DefaultEvaluationFrame<E> {
         }
     }
 
-    fn is_active_cell(offset: usize, column_index: usize) -> bool {
+    fn row_len(offset: usize) -> Option<usize> {
+        if offset < 2 {
+            None
+        }
+        else {
+            Some(0)
+        }
+    }
+
+    fn is_active_cell(offset: usize, _column_index: usize) -> bool {
         offset < 2
     }
 
@@ -129,6 +147,10 @@ impl<E: FieldElement> EvaluationFrame<E> for DefaultEvaluationFrame<E> {
             1 => &self.next,
             _ => panic!("Row index must be 0 or 1")
         }
+    }
+
+    fn main_row<'a>(&'a self) -> &'a [E] {
+        &self.current
     }
 
     fn to_table(&self) -> Table<E> {
@@ -186,6 +208,15 @@ impl<E: FieldElement> EvaluationFrame<E> for CustomEvaluationFrame<E> {
         false
     }
 
+    fn row_len(offset: usize) -> Option<usize> {
+        if Self::offsets().contains(&offset) {
+            Some(0)
+        }
+        else {
+            None
+        }
+    }
+
     // ROW MUTATORS
     // --------------------------------------------------------------------------------------------
 
@@ -203,6 +234,10 @@ impl<E: FieldElement> EvaluationFrame<E> for CustomEvaluationFrame<E> {
 
     fn row<'a>(&'a self, row_idx: usize) -> &'a [E] {
         &self.table.get_row(row_idx)
+    }
+
+    fn main_row<'a>(&'a self) -> &'a [E] {
+        &self.table.get_row(0)
     }
 
     fn to_table(&self) -> Table<E> {

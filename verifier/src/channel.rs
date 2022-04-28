@@ -71,7 +71,7 @@ impl<
             pow_nonce,
         } = proof;
 
-        // make AIR and proof base fields are the same
+        // make sure AIR and proof base fields are the same
         if E::BaseField::get_modulus_le_bytes() != context.field_modulus_bytes() {
             return Err(VerifierError::InconsistentBaseField);
         }
@@ -108,7 +108,6 @@ impl<
             .parse(
                 main_trace_width,
                 aux_trace_width,
-                air.eval_frame_size(),
                 air.ce_blowup_factor(),
             )
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;

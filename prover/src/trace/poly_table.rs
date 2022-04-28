@@ -68,12 +68,12 @@ impl<E: FieldElement> TracePolyTable<E> {
     }
 
     /// Evaluates some trace polynomials (across all trace segments) at the specified point `x`.
-    pub fn evaluate_some_at<P, T>(&self, predicate: P, x: E) -> Vec<E>
-    where P: FnMut() -> bool
+    pub fn evaluate_some_at<P>(&self, mut predicate: P, x: E) -> Vec<E>
+    where P: FnMut(usize) -> bool
     {
-        let mut result = self.main_segment_polys.evaluate_some_columns_at(x, predicate);
+        let mut result = self.main_segment_polys.evaluate_some_columns_at(x, &mut predicate);
         for aux_polys in self.aux_segment_polys.iter() {
-            result.append(&mut aux_polys.evaluate_columns_at(x));
+            result.append(&mut aux_polys.evaluate_some_columns_at(x, &mut predicate));
         }
         result
     }
@@ -85,9 +85,10 @@ impl<E: FieldElement> TracePolyTable<E> {
         let g = E::from(E::BaseField::get_root_of_unity(log2(self.poly_size())));
         // TODO: Modify evaluate_at in order to evaluate only some of the rows
         air.frame_offsets().iter()
-            .map(|offset| self.evaluate_some_at(
-                |column_index| air.is_active_cell(offset, column_index),
-                z * g.exp((*i as u64).into())
+            .map(|offset| 
+                self.evaluate_some_at(
+                    |row_index| A::is_active_cell(*offset, row_index),
+                    z * g.exp((*offset as u64).into())
             ))
             .collect()
     }

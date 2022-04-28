@@ -205,12 +205,12 @@ impl<E: FieldElement> Matrix<E> {
     }
 
     /// Evaluates polynomials contained in some of the columns of this matrix at a single point `x`.
-    pub fn evaluate_some_columns_at<F, P>(&self, x: F, mut predicate: P) -> Vec<F>
+    pub fn evaluate_some_columns_at<F, P>(&self, x: F, predicate: &mut P) -> Vec<F>
     where
         F: FieldElement + From<E>,
-        P: FnMut() -> bool
+        P: FnMut(usize) -> bool
     {
-        iter!(self.columns).filter(|_| predicate()).map(|p| polynom::eval(p, x)).collect()
+        iter!(self.columns).enumerate().filter(|(i,_)| predicate(*i)).map(|(_,p)| polynom::eval(p, x)).collect()
     }
 
     // COMMITMENTS

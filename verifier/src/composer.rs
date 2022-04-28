@@ -73,7 +73,7 @@ impl<E: FieldElement> DeepComposer<E> {
         // z as well as conjugate of z itself. we do this only for the main trace since auxiliary
         // trace columns are in the extension field.
         let conjugate_values =
-            get_conjugate_values(self.field_extension, ood_main_frame.row(0), self.z[0]);
+            get_conjugate_values(self.field_extension, ood_main_frame.main_row(), self.z[0]);
 
         // compose columns of the main trace segment
         let mut result = E::zeroed_vector(queried_main_trace_states.num_rows());
@@ -86,10 +86,10 @@ impl<E: FieldElement> DeepComposer<E> {
                 let value = E::from(value);
 
                 let row_count = F1::num_rows();
-                for j in 0..row_count {
+                for (j,offset) in F1::offsets().iter().enumerate(){
                     // compute T^j_i(x) = (T_i(x) - T_i(z * g^j)) / (x - z * g^j), multiply it by a composition
                     // coefficient, and add the result to T(x)
-                    let t1 = (value - ood_main_frame.row(j)[i]) / (x - self.z[j]);
+                    let t1 = (value - ood_main_frame.row(*offset)[i]) / (x - self.z[*offset]);
                     *result += t1 * self.cc.trace[i][j];
                 }
 
@@ -97,7 +97,7 @@ impl<E: FieldElement> DeepComposer<E> {
                 // T'''_i(x) = (T_i(x) - T_i(z_conjugate)) / (x - z_conjugate)
                 if let Some((z_conjugate, ref trace_at_z1_conjugates)) = conjugate_values {
                     let t3 = (value - trace_at_z1_conjugates[i]) / (x - z_conjugate);
-                    *result += t3 * self.cc.trace[i][row_count + 1];
+                    *result += t3 * self.cc.trace[i][row_count];
                 }
             }
         }

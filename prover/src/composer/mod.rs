@@ -68,39 +68,39 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
     ///   over the base field, rather than the extension field.
     ///
     /// Note that evaluations of T_i(z) and T_i(z * g) are passed in via the `ood_frame` parameter.
-    pub fn add_trace_polys(
+    pub fn add_trace_polys<A: Air>(
         &mut self,
+        air: &A,
         trace_polys: TracePolyTable<E>,
         ood_trace_states: Vec<Vec<E>>,
     ) {
         assert!(self.coefficients.is_empty());
 
-        //TODO: Consider non consecutive fragments of the states
-        let frame_size = ood_trace_states.len();
-
         // compute out-of-domain point offset from z using the trace generator
         let trace_length = trace_polys.poly_size();
         let g = E::from(E::BaseField::get_root_of_unity(log2(trace_length)));
-        let mut z: Vec<E> = (0..frame_size)
-            .map(|i| self.z * g.exp((i as u64).into()))
+        let mut z: Vec<E> = air.frame_offsets().iter()
+            .map(|i| self.z * g.exp((*i as u64).into()))
             .collect();
 
         // combine trace polynomials into composition polynomials T^j(x), j=0,..,n where
         // n is the frame size, and if we are using a field extension, also T^{n+1}(x)
-        let mut tj_composition = vec![E::zeroed_vector(trace_length); frame_size];
+        let mut tj_composition = vec![E::zeroed_vector(trace_length); air.eval_frame_size()];
         let mut tn_composition = if self.field_extension {
             E::zeroed_vector(trace_length)
         } else {
             Vec::new()
         };
 
-        // index of a trace polynomial; we declare it here so that we can maintain index continuity
-        // across all trace segments
-        let mut i = 0;
-
         // --- merge polynomials of the main trace segment ----------------------------------------
-        for poly in trace_polys.main_trace_polys() {
-            for j in 0..frame_size {
+        for (j, offset) in air.frame_offsets().iter().enumerate() {
+            // index of a trace polynomial; we declare it here so that we can maintain index continuity
+            // across all trace segments
+            let mut i = 0;
+            for (k, poly) in
+            trace_polys.main_trace_polys().enumerate().filter(
+                |(k, _)| A::is_active_cell(*offset, *k)
+            ){
                 // compute T^j(x) = T(x) - T(z * g^j), multiply it by a pseudo-random coefficient,
                 // and add the result into composition polynomial
                 acc_trace_poly::<E::BaseField, E>(
@@ -109,28 +109,17 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
                     ood_trace_states[j][i],
                     self.cc.trace[i][j],
                 );
+                i += 1;
             }
 
-            // when extension field is enabled, compute T'''(x) = T(x) - T(z_conjugate), multiply
-            // it by a pseudo-random coefficient, and add the result into composition polynomial
-            if self.field_extension {
-                acc_trace_poly::<E::BaseField, E>(
-                    &mut tn_composition,
-                    poly,
-                    ood_trace_states[0][i].conjugate(),
-                    self.cc.trace[i][frame_size + 1],
-                );
-            }
+            // --- merge polynomials of the auxiliary trace segments ----------------------------------
 
-            i += 1;
-        }
+            // since trace polynomials are already in an extension field (when extension fields are
+            // used), we don't apply conjugate composition to them
 
-        // --- merge polynomials of the auxiliary trace segments ----------------------------------
-
-        // since trace polynomials are already in an extension field (when extension fields are
-        // used), we don't apply conjugate composition to them
-        for poly in trace_polys.aux_trace_polys() {
-            for j in 0..frame_size {
+            // TODO: the aux offsets might be different. As it is it only work for the default frame or
+            // main and aux frames using the same offsets
+            for poly in trace_polys.aux_trace_polys() {
                 // compute T'(x) = T(x) - T(z), multiply it by a pseudo-random coefficient,
                 // and add the result into composition polynomial
                 acc_trace_poly::<E, E>(
@@ -139,9 +128,23 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
                     ood_trace_states[j][i],
                     self.cc.trace[i][j],
                 );
+                i += 1;
             }
+        }
 
-            i += 1;
+        // when extension field is enabled, compute T'''(x) = T(x) - T(z_conjugate), multiply
+        // it by a pseudo-random coefficient, and add the result into composition polynomial
+        // TODO: Is this guy still necessary?
+        
+        if self.field_extension { 
+            for (i, poly) in trace_polys.main_trace_polys().enumerate() {
+                acc_trace_poly::<E::BaseField, E>(
+                    &mut tn_composition,
+                    poly,
+                    ood_trace_states[0][i].conjugate(),
+                    self.cc.trace[i][air.eval_frame_size()],
+                );
+            }
         }
 
         // divide the composition polynomials by (x - z), (x - z * g), and (x - z_conjugate)

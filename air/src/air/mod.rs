@@ -552,20 +552,27 @@ pub trait Air: Send + Sync {
         H: Hasher,
     {
         let mut t_coefficients = Vec::new();
-        for _ in 0..self.trace_layout().main_trace_width() {
+        for column_index in 0..self.trace_layout().main_trace_width() {
             let mut values = Vec::new();
             // TODO: It might skip some rows
-            for _ in 0..self.main_frame_size() + 1 {
+            for offset in self.main_frame_offsets() {
+                if Self::is_active_cell(*offset, column_index) {
+                    values.push(public_coin.draw()?);
+                }
+            }
+            if !self.options().field_extension().is_none(){
                 values.push(public_coin.draw()?);
             }
             t_coefficients.push(values);
         }
         for _ in 0..self.trace_layout().num_aux_segments(){
-            for _ in 0..self.trace_layout().aux_trace_width() {
+            for column_index in 0..self.trace_layout().aux_trace_width() {
                 let mut values = Vec::new();
                 // TODO: It might skip some rows
-                for _ in 0..self.aux_frame_size() + 1 {
-                    values.push(public_coin.draw()?);
+                for offset in self.main_frame_offsets() {
+                    if Self::is_active_cell(*offset, column_index){ 
+                        values.push(public_coin.draw()?);
+                    }
                 }
                 t_coefficients.push(values);
             }
