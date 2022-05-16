@@ -357,7 +357,47 @@ pub trait Air: Send + Sync {
         &self,
         composition_coefficients: &[(E, E)],
     ) -> TransitionConstraints<E> {
-        TransitionConstraints::new(self.context(), composition_coefficients)
+         // build constraint divisor; the same divisor applies to all transition constraints
+         // TODO: this depends on the frame
+        let main_divisor = ConstraintDivisor::from_transition(
+            self.context().trace_len(),
+            Self::Frame::<E>::FRAME_SHIFT,
+            Self::Frame::<E>::len(),
+        );
+        let mut aux_divisor = None;
+        if self.context().trace_info.is_multi_segment() {
+           aux_divisor = Some(ConstraintDivisor::from_transition(
+                self.context().trace_len(),
+                Self::AuxFrame::<E>::FRAME_SHIFT,
+                Self::AuxFrame::<E>::len(),
+            ));
+        }
+         
+        TransitionConstraints::new(
+            self.context(), 
+            main_divisor, 
+            aux_divisor, 
+            composition_coefficients
+        )
+    }
+
+    fn get_main_transition_constraints<E: FieldElement<BaseField = Self::BaseField>>(
+        &self,
+        composition_coefficients: &[(E, E)],
+    ) -> TransitionConstraints<E> {
+         // build constraint divisor; the same divisor applies to all transition constraints
+        let main_divisor = ConstraintDivisor::from_transition(
+            self.context().trace_len(),
+            Self::Frame::<E>::FRAME_SHIFT,
+            Self::Frame::<E>::len(),
+        );
+        let aux_divisor = None;
+        TransitionConstraints::new(
+            self.context(), 
+            main_divisor, 
+            aux_divisor, 
+            composition_coefficients
+        )
     }
 
     /// Convert assertions returned from [get_assertions()](Air::get_assertions) and

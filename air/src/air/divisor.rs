@@ -53,15 +53,15 @@ impl<B: StarkField> ConstraintDivisor<B> {
     ///
     /// The above divisor specifies that transition constraints must hold on all steps of the
     /// execution trace except for the last $k$ steps.
-    pub fn from_transition(trace_length: usize, num_exemptions: usize) -> Self {
+    pub fn from_transition(trace_length: usize, frame_shift: usize, frame_length: usize) -> Self {
         assert!(
-            num_exemptions > 0,
-            "invalid number of transition exemptions: must be greater than zero"
+            frame_shift.is_power_of_two(),
+            "invalid frame shift: must be a power of 2"
         );
-        let exemptions = (trace_length - num_exemptions..trace_length)
-            .map(|step| get_trace_domain_value_at::<B>(trace_length, step))
+        let exemptions = ((trace_length - frame_length)/frame_shift ..trace_length/frame_shift)
+            .map(|step| get_trace_domain_value_at::<B>(trace_length, step*frame_shift))
             .collect();
-        Self::new(vec![(trace_length, B::ONE)], exemptions)
+        Self::new(vec![(trace_length/frame_shift, B::ONE)], exemptions)
     }
 
     /// Builds a divisor for a boundary constraint described by the assertion.

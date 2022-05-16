@@ -85,7 +85,10 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         // build a list of constraint divisors; currently, all transition constraints have the same
         // divisor which we put at the front of the list; boundary constraint divisors are appended
         // after that
-        let mut divisors = vec![self.transition_constraints.divisor().clone()];
+        let mut divisors = vec![self.transition_constraints.main_divisor().clone()];
+        if let Some(aux_divisor) = self.transition_constraints.aux_divisor() {
+            divisors.push(aux_divisor.clone())
+        }
         divisors.append(&mut self.boundary_constraints.get_divisors());
 
         // allocate space for constraint evaluations; when we are in debug mode, we also allocate
@@ -232,7 +235,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
             // can just add up the results of evaluating main and auxiliary constraints.
             evaluations[0] =
                 self.evaluate_main_transition(&main_frame, x, step, &mut tm_evaluations);
-            evaluations[0] +=
+            evaluations[1] =
                 self.evaluate_aux_transition(&main_frame, &aux_frame, x, step, &mut ta_evaluations);
 
             // when in debug mode, save transition constraint evaluations
@@ -252,7 +255,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
                 aux_state,
                 x,
                 step,
-                &mut evaluations[1..],
+                &mut evaluations[2..],
             );
 
             // record the result in the evaluation table

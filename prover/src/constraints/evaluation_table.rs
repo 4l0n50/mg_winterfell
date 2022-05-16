@@ -440,11 +440,16 @@ fn build_transition_constraint_degrees<E: FieldElement>(
     let mut result = Vec::new();
 
     for degree in constraints.main_constraint_degrees() {
-        result.push(degree.get_evaluation_degree(trace_length) - constraints.divisor().degree())
+        result.push(degree.get_evaluation_degree(trace_length) - constraints.main_divisor().degree())
     }
 
     for degree in constraints.aux_constraint_degrees() {
-        result.push(degree.get_evaluation_degree(trace_length) - constraints.divisor().degree())
+        if let Some(aux_divisor) = constraints.aux_divisor() {
+            result.push(degree.get_evaluation_degree(trace_length) - aux_divisor.degree())
+        }
+        else {
+            panic!("Undefined divisor")
+        }
     }
 
     result

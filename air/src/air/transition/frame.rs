@@ -35,6 +35,11 @@ pub trait EvaluationFrame<E: FieldElement> {
         Self::offsets().len()
     }
 
+    fn len() -> usize {
+        // TODO: Here we are assumin the last offset is the larger one
+        *Self::offsets().last().unwrap()
+    }
+
     /// Returns the offsets that make up a frame
     fn offsets() -> &'static [usize];
 }

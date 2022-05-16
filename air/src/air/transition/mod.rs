@@ -31,7 +31,8 @@ pub struct TransitionConstraints<E: FieldElement> {
     main_constraint_degrees: Vec<TransitionConstraintDegree>,
     aux_constraints: Vec<TransitionConstraintGroup<E>>,
     aux_constraint_degrees: Vec<TransitionConstraintDegree>,
-    divisor: ConstraintDivisor<E::BaseField>,
+    main_divisor: ConstraintDivisor<E::BaseField>,
+    aux_divisor: Option<ConstraintDivisor<E::BaseField>>
 }
 
 impl<E: FieldElement> TransitionConstraints<E> {
@@ -43,17 +44,16 @@ impl<E: FieldElement> TransitionConstraints<E> {
     /// # Panics
     /// Panics if the number of transition constraints in the context does not match the number of
     /// provided composition coefficients.
-    pub fn new(context: &AirContext<E::BaseField>, composition_coefficients: &[(E, E)]) -> Self {
+    pub fn new(
+        context: &AirContext<E::BaseField>, 
+        main_divisor: ConstraintDivisor<E::BaseField>,
+        aux_divisor: Option<ConstraintDivisor<E::BaseField>>, 
+        composition_coefficients: &[(E, E)]) 
+        -> Self {
         assert_eq!(
             context.num_transition_constraints(),
             composition_coefficients.len(),
             "number of transition constraints must match the number of composition coefficient tuples"
-        );
-
-        // build constraint divisor; the same divisor applies to all transition constraints
-        let divisor = ConstraintDivisor::from_transition(
-            context.trace_len(),
-            context.num_transition_exemptions(),
         );
 
         // group constraints by their degree, separately for constraints against main and auxiliary
@@ -67,14 +67,17 @@ impl<E: FieldElement> TransitionConstraints<E> {
             &main_constraint_degrees,
             context,
             main_constraint_coefficients,
-            divisor.degree(),
+            main_divisor.degree(),
         );
         let aux_constraint_degrees = context.aux_transition_constraint_degrees.clone();
         let aux_constraints = group_constraints(
             &aux_constraint_degrees,
             context,
             aux_constraint_coefficients,
-            divisor.degree(),
+            aux_divisor.clone().map_or_else(
+                || 0,
+                |aux_divisor| aux_divisor.degree()
+            )
         );
 
         Self {
@@ -82,7 +85,8 @@ impl<E: FieldElement> TransitionConstraints<E> {
             main_constraint_degrees,
             aux_constraints,
             aux_constraint_degrees,
-            divisor,
+            main_divisor,
+            aux_divisor
         }
     }
 
@@ -142,8 +146,12 @@ impl<E: FieldElement> TransitionConstraints<E> {
     ///
     /// This divisor specifies that transition constraints must hold on all steps of the
     /// execution trace except for the last one.
-    pub fn divisor(&self) -> &ConstraintDivisor<E::BaseField> {
-        &self.divisor
+    pub fn main_divisor(&self) -> &ConstraintDivisor<E::BaseField> {
+        &self.main_divisor
+    }
+
+    pub fn aux_divisor(&self) -> Option<&ConstraintDivisor<E::BaseField>> {
+        self.aux_divisor.as_ref()
     }
 
     // CONSTRAINT COMPOSITION
@@ -170,21 +178,23 @@ impl<E: FieldElement> TransitionConstraints<E> {
         E: ExtensionOf<F>,
     {
         // merge constraint evaluations for the main trace segment
-        let mut result = self.main_constraints().iter().fold(E::ZERO, |acc, group| {
+        let mut result= self.main_constraints().iter().fold(E::ZERO, |acc, group| {
             acc + group.merge_evaluations::<F, F>(main_evaluations, x)
         });
-
+        let z = E::from(self.main_divisor.evaluate_at(x));
+        result /= z;
         // merge constraint evaluations for auxiliary trace segments (if any)
         if self.num_aux_constraints() > 0 {
-            result += self.aux_constraints().iter().fold(E::ZERO, |acc, group| {
+            let result_aux = self.aux_constraints().iter().fold(E::ZERO, |acc, group| {
                 acc + group.merge_evaluations::<F, E>(aux_evaluations, x)
             });
+            let divisor = self.aux_divisor().unwrap();
+            let z = E::from(divisor.evaluate_at(x));
+            result += result_aux/z
         }
 
         // divide out the evaluation of divisor at x and return the result
-        let z = E::from(self.divisor.evaluate_at(x));
-        result / z
-    }
+        result    }
 }
 
 // TRANSITION CONSTRAINT GROUP
