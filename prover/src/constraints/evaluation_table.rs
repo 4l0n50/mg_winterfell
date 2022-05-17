@@ -199,8 +199,14 @@ impl<E: FieldElement> ConstraintEvaluationTable<E> {
         // evaluate transition constraint divisor (which is assumed to be the first one in the
         // divisor list) over the constraint evaluation domain. this is used later to compute
         // actual degrees of transition constraint evaluations.
-        let div_values = evaluate_divisor::<E::BaseField>(
+        let main_div_values = evaluate_divisor::<E::BaseField>(
             &self.divisors[0],
+            self.num_rows(),
+            self.domain_offset,
+        );
+
+        let aux_div_values = evaluate_divisor::<E::BaseField>(
+            &self.divisors[1],
             self.num_rows(),
             self.domain_offset,
         );
@@ -214,14 +220,14 @@ impl<E: FieldElement> ConstraintEvaluationTable<E> {
 
         // first process transition constraint evaluations for the main trace segment
         for evaluations in self.main_transition_evaluations.iter() {
-            let degree = get_transition_poly_degree(evaluations, &inv_twiddles, &div_values);
+            let degree = get_transition_poly_degree(evaluations, &inv_twiddles, &main_div_values);
             actual_degrees.push(degree);
             max_degree = core::cmp::max(max_degree, degree);
         }
 
         // then process transition constraint evaluations for auxiliary trace segments
         for evaluations in self.aux_transition_evaluations.iter() {
-            let degree = get_transition_poly_degree(evaluations, &inv_twiddles, &div_values);
+            let degree = get_transition_poly_degree(evaluations, &inv_twiddles, &aux_div_values);
             actual_degrees.push(degree);
             max_degree = core::cmp::max(max_degree, degree);
         }

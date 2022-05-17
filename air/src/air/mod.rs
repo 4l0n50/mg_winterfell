@@ -363,6 +363,7 @@ pub trait Air: Send + Sync {
             self.context().trace_len(),
             Self::Frame::<E>::FRAME_SHIFT,
             Self::Frame::<E>::len(),
+            self.context().num_transition_exemptions()
         );
         let mut aux_divisor = None;
         if self.context().trace_info.is_multi_segment() {
@@ -370,28 +371,10 @@ pub trait Air: Send + Sync {
                 self.context().trace_len(),
                 Self::AuxFrame::<E>::FRAME_SHIFT,
                 Self::AuxFrame::<E>::len(),
+                self.context().num_transition_exemptions()
             ));
         }
          
-        TransitionConstraints::new(
-            self.context(), 
-            main_divisor, 
-            aux_divisor, 
-            composition_coefficients
-        )
-    }
-
-    fn get_main_transition_constraints<E: FieldElement<BaseField = Self::BaseField>>(
-        &self,
-        composition_coefficients: &[(E, E)],
-    ) -> TransitionConstraints<E> {
-         // build constraint divisor; the same divisor applies to all transition constraints
-        let main_divisor = ConstraintDivisor::from_transition(
-            self.context().trace_len(),
-            Self::Frame::<E>::FRAME_SHIFT,
-            Self::Frame::<E>::len(),
-        );
-        let aux_divisor = None;
         TransitionConstraints::new(
             self.context(), 
             main_divisor, 

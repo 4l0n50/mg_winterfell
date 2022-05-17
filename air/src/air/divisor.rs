@@ -53,14 +53,25 @@ impl<B: StarkField> ConstraintDivisor<B> {
     ///
     /// The above divisor specifies that transition constraints must hold on all steps of the
     /// execution trace except for the last $k$ steps.
-    pub fn from_transition(trace_length: usize, frame_shift: usize, frame_length: usize) -> Self {
+    pub fn from_transition(
+        trace_length: usize, 
+        frame_shift: usize, 
+        frame_length: usize, 
+        exemptions: usize) 
+        -> Self {
         assert!(
             frame_shift.is_power_of_two(),
             "invalid frame shift: must be a power of 2"
         );
-        let exemptions = ((trace_length - frame_length)/frame_shift ..trace_length/frame_shift)
+        let exemptions: Vec<_> = (trace_length/frame_shift - exemptions..trace_length/frame_shift)
             .map(|step| get_trace_domain_value_at::<B>(trace_length, step*frame_shift))
             .collect();
+        // TODO:  It seems right now frame_length is returning the index of the larger offset, and then for
+        // default frames is returning frame_length-1
+        let min_exemptions: Vec<_> = ((trace_length - frame_length)/frame_shift ..trace_length/frame_shift)
+            .map(|step| get_trace_domain_value_at::<B>(trace_length, step*frame_shift))
+            .collect();
+        assert!(exemptions.len() >= min_exemptions.len(), "Too few exemptions");
         Self::new(vec![(trace_length/frame_shift, B::ONE)], exemptions)
     }
 
