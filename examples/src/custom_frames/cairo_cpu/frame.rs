@@ -4,23 +4,23 @@ use winterfell::{Air, EvaluationFrame, Table};
 
 /// Contains rows of the execution trace
 #[derive(Debug, Clone)]
-pub struct FibEvaluationFrame<E: FieldElement> {
+pub struct CairoCpuFrame<E: FieldElement> {
     table: Table<E>, // row-major indexing
 }
 
 // DEFAULT EVALUATION FRAME
 // ================================================================================================
 
-impl<E: FieldElement> EvaluationFrame<E> for FibEvaluationFrame<E> {
+impl<E: FieldElement> EvaluationFrame<E> for CairoCpuFrame<E> {
 
-    const FRAME_SHIFT: usize = 1;
+    const FRAME_SHIFT: usize = 16;
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
     fn new<A: Air>(air: &A) -> Self {
         let num_cols = air.trace_layout().main_trace_width();
         let num_rows = Self::num_rows();
-        FibEvaluationFrame {
+        CairoCpuFrame {
             table: Table::new(num_rows, num_cols),
         }
     }
@@ -53,6 +53,6 @@ impl<E: FieldElement> EvaluationFrame<E> for FibEvaluationFrame<E> {
     }
 
     fn offsets() -> &'static [usize] {
-        &[0, 1, 2]
+        &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
     }
 }

@@ -13,7 +13,7 @@ use utils::TableReader;
 pub trait EvaluationFrame<E: FieldElement> {
     /// Amount of trace rows that the evaluation frame should shift across
     /// consecutive constraint evaluation steps
-    const FRAME_SHIFT: usize = 1;
+    const FRAME_SHIFT: usize;
 
     /// Creates an empty frame
     fn new<A: Air>(air: &A) -> Self;
@@ -54,6 +54,8 @@ pub struct DefaultEvaluationFrame<E: FieldElement> {
 // ================================================================================================
 
 impl<E: FieldElement> EvaluationFrame<E> for DefaultEvaluationFrame<E> {
+
+    const FRAME_SHIFT: usize = 1;
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
